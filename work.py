@@ -1,5 +1,6 @@
 #This file is part of Tryton.  The COPYRIGHT file at the top level of
 #this repository contains the full copyright notices and license terms.
+from datetime import timedelta
 from decimal import Decimal
 
 from trytond.pool import Pool, PoolMeta
@@ -22,17 +23,17 @@ class Work:
             cls.project_invoice_method.selection.append(item)
 
     @staticmethod
-    def _get_invoiced_hours_hours(works):
+    def _get_invoiced_duration_hours(works):
         Work = Pool().get('project.work')
         # Needed to browse invoice lines
         with Transaction().set_user(0, set_context=True):
             works = Work.browse([x.id for x in works])
-        return dict((w.id, w.invoice_line.quantity or 0.0) for w in works
-            if w.invoice_line)
+        return dict((w.id, timedelta(hours=w.invoice_line.quantity or 0.0))
+            for w in works if w.invoice_line)
 
     @staticmethod
-    def _get_hours_to_invoice_hours(works):
-        return dict((w.id, w.hours or 0.0) for w in works
+    def _get_duration_to_invoice_hours(works):
+        return dict((w.id, w.effort_duration) for w in works
             if w.state == 'done' and not w.invoice_line)
 
     @staticmethod
@@ -56,14 +57,15 @@ class Work:
         return amounts
 
     def _get_lines_to_invoice_hours(self):
-        if not self.invoice_line and self.hours and self.state == 'done':
+        if (not self.invoice_line and self.timesheet_duration
+                and self.state == 'done'):
             if not self.product:
                 self.raise_user_error('missing_product', (self.rec_name,))
             elif self.list_price is None:
                 self.raise_user_error('missing_list_price', (self.rec_name,))
             return [{
                     'product': self.product,
-                    'quantity': self.hours,
+                    'quantity': self.effort_hours,
                     'unit_price': self.list_price,
                     'origin': self,
                     'description': self.work.name,
