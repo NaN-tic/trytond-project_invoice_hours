@@ -12,6 +12,12 @@ Imports::
     >>> from dateutil.relativedelta import relativedelta
     >>> from decimal import Decimal
     >>> from proteus import config, Model, Wizard
+    >>> from trytond.modules.company.tests.tools import create_company, \
+    ...     get_company
+    >>> from trytond.modules.account.tests.tools import create_chart, \
+    ...     get_accounts
+    >>> from.trytond.modules.account_invoice.tests.tools import \
+    ...     create_payment_term
     >>> today = datetime.date.today()
 
 Create database::
@@ -21,47 +27,22 @@ Create database::
 
 Install project_invoice::
 
-    >>> Module = Model.get('ir.module.module')
+    >>> Module = Model.get('ir.module')
     >>> module, = Module.find([
     ...         ('name', '=', 'project_invoice_hours'),
     ...     ])
     >>> Module.install([module.id], config.context)
-    >>> Wizard('ir.module.module.install_upgrade').execute('upgrade')
+    >>> Wizard('ir.module.install_upgrade').execute('upgrade')
 
 Create company::
 
-    >>> Currency = Model.get('currency.currency')
-    >>> CurrencyRate = Model.get('currency.currency.rate')
-    >>> Company = Model.get('company.company')
-    >>> Party = Model.get('party.party')
-    >>> company_config = Wizard('company.company.config')
-    >>> company_config.execute('company')
-    >>> company = company_config.form
-    >>> party = Party(name='Dunder Mifflin')
-    >>> party.save()
-    >>> company.party = party
-    >>> currencies = Currency.find([('code', '=', 'USD')])
-    >>> if not currencies:
-    ...     currency = Currency(name='Euro', symbol=u'$', code='USD',
-    ...         rounding=Decimal('0.01'), mon_grouping='[3, 3, 0]',
-    ...         mon_decimal_point='.')
-    ...     currency.save()
-    ...     CurrencyRate(date=today + relativedelta(month=1, day=1),
-    ...         rate=Decimal('1.0'), currency=currency).save()
-    ... else:
-    ...     currency, = currencies
-    >>> company.currency = currency
-    >>> company_config.execute('add')
-    >>> company, = Company.find()
-
-Reload the context::
-
-    >>> User = Model.get('res.user')
-    >>> Group = Model.get('res.group')
-    >>> config._context = User.get_preferences(True, config.context)
+    >>> _ = create_company()
+    >>> company = get_company()
 
 Create project user::
 
+    >>> User = Model.get('res.user')
+    >>> Group = Model.get('res.group')
     >>> project_user = User()
     >>> project_user.name = 'Project'
     >>> project_user.login = 'project'
@@ -85,37 +66,13 @@ Create project invoice user::
 
 Create chart of accounts::
 
-    >>> AccountTemplate = Model.get('account.account.template')
-    >>> Account = Model.get('account.account')
-    >>> account_template, = AccountTemplate.find([('parent', '=', None)])
-    >>> create_chart = Wizard('account.create_chart')
-    >>> create_chart.execute('account')
-    >>> create_chart.form.account_template = account_template
-    >>> create_chart.form.company = company
-    >>> create_chart.execute('create_account')
-    >>> receivable, = Account.find([
-    ...         ('kind', '=', 'receivable'),
-    ...         ('company', '=', company.id),
-    ...         ])
-    >>> payable, = Account.find([
-    ...         ('kind', '=', 'payable'),
-    ...         ('company', '=', company.id),
-    ...         ])
-    >>> revenue, = Account.find([
-    ...         ('kind', '=', 'revenue'),
-    ...         ('company', '=', company.id),
-    ...         ])
-    >>> create_chart.form.account_receivable = receivable
-    >>> create_chart.form.account_payable = payable
-    >>> create_chart.execute('create_properties')
+    >>> _ = create_chart(company)
+    >>> accounts = get_accounts(company)
+    >>> revenue = accounts['revenue']
 
 Create payment term::
 
-    >>> PaymentTerm = Model.get('account.invoice.payment_term')
-    >>> PaymentTermLine = Model.get('account.invoice.payment_term.line')
-    >>> payment_term = PaymentTerm(name='Term')
-    >>> payment_term_line = PaymentTermLine(type='remainder', days=40)
-    >>> payment_term.lines.append(payment_term_line)
+    >>> payment_term = create_payment_term()
     >>> payment_term.save()
 
 Create customer::
@@ -159,6 +116,7 @@ Create a Project::
     >>> ProjectWork = Model.get('project.work')
     >>> TimesheetWork = Model.get('timesheet.work')
     >>> project = ProjectWork()
+    >>> project.name = 'Test effort'
     >>> work = TimesheetWork()
     >>> work.name = 'Test effort'
     >>> work.save()
@@ -167,15 +125,16 @@ Create a Project::
     >>> project.party = customer
     >>> project.project_invoice_method = 'hours'
     >>> project.product = product
-    >>> project.effort = 1
+    >>> project.effort_duration = datetime.timedelta(hours=1)
     >>> task = ProjectWork()
+    >>> task.name = 'Task 1'
     >>> work = TimesheetWork()
     >>> work.name = 'Task 1'
     >>> work.save()
     >>> task.work = work
     >>> task.type = 'task'
     >>> task.product = product
-    >>> task.effort = 5
+    >>> task.effort_duration = datetime.timedelta(hours=3)
     >>> project.children.append(task)
     >>> project.save()
     >>> task, = project.children
@@ -185,24 +144,24 @@ Create timesheets::
     >>> TimesheetLine = Model.get('timesheet.line')
     >>> line = TimesheetLine()
     >>> line.employee = employee
-    >>> line.hours = 3
+    >>> line.duration = datetime.timedelta(hours=3)
     >>> line.work = task.work
     >>> line.save()
     >>> line = TimesheetLine()
     >>> line.employee = employee
-    >>> line.hours = 2
+    >>> line.duration = datetime.timedelta(hours=2)
     >>> line.work = project.work
     >>> line.save()
 
 Check project hours::
 
     >>> project.reload()
-    >>> project.invoiced_hours
-    0.0
-    >>> project.hours_to_invoice
-    0.0
-    >>> project.invoiced_amount == Decimal(0)
-    True
+    >>> project.invoiced_duration
+    datetime.timedelta(0)
+    >>> project.duration_to_invoice
+    datetime.timedelta(0)
+    >>> project.invoiced_amount
+    Decimal('0')
 
 Do 1 task::
 
@@ -212,21 +171,20 @@ Do 1 task::
 Check project hours::
 
     >>> project.reload()
-    >>> project.invoiced_hours
-    0.0
-    >>> project.hours_to_invoice
-    3.0
-    >>> project.invoiced_amount == Decimal(0)
-    True
+    >>> project.invoiced_duration
+    datetime.timedelta(0)
+    >>> project.duration_to_invoice
+    datetime.timedelta(0, 10800)
+    >>> project.invoiced_amount
+    Decimal('0')
 
 Invoice project::
 
     >>> config.user = project_invoice_user.id
-    >>> ProjectWork.invoice([project.id], config.context)
-    >>> project.reload()
-    >>> project.invoiced_hours
-    3.0
-    >>> project.hours_to_invoice
-    0.0
-    >>> project.invoiced_amount == Decimal(60)
-    True
+    >>> project.click('invoice')
+    >>> project.invoiced_duration
+    datetime.timedelta(0, 10800)
+    >>> project.duration_to_invoice
+    datetime.timedelta(0)
+    >>> project.invoiced_amount
+    Decimal('60.00')

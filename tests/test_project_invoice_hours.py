@@ -4,19 +4,13 @@
 import unittest
 import doctest
 import trytond.tests.test_tryton
-from trytond.tests.test_tryton import test_depends
+from trytond.tests.test_tryton import ModuleTestCase
 from trytond.tests.test_tryton import doctest_setup, doctest_teardown
 
 
-class ProjectInvoiceHoursTestCase(unittest.TestCase):
+class ProjectInvoiceHoursTestCase(ModuleTestCase):
     'Test Project Invoice Hours module'
-
-    def setUp(self):
-        trytond.tests.test_tryton.install_module('project_invoice_hours')
-
-    def test0006depends(self):
-        'Test depends'
-        test_depends()
+    module = 'project_invoice_hours'
 
 
 def suite():
