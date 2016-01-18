@@ -56,6 +56,12 @@ class Work:
                 amounts[work.id] = Decimal(0)
         return amounts
 
+    @property
+    def hours(self):
+        if not self.timesheet_duration:
+            return 0
+        return self.timesheet_duration.total_seconds() / 60 / 60
+
     def _get_lines_to_invoice_hours(self):
         if (not self.invoice_line and self.timesheet_duration
                 and self.state == 'done'):
@@ -65,7 +71,7 @@ class Work:
                 self.raise_user_error('missing_list_price', (self.rec_name,))
             return [{
                     'product': self.product,
-                    'quantity': self.effort_hours,
+                    'quantity': self.hours,
                     'unit_price': self.list_price,
                     'origin': self,
                     'description': self.work.name,
