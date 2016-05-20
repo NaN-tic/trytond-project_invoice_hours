@@ -2,15 +2,14 @@
 #this repository contains the full copyright notices and license terms.
 from datetime import timedelta
 from decimal import Decimal
-
 from trytond.pool import Pool, PoolMeta
 from trytond.transaction import Transaction
 
 __all__ = ['Work']
-__metaclass__ = PoolMeta
 
 
 class Work:
+    __metaclass__ = PoolMeta
     __name__ = 'project.work'
 
     @classmethod
