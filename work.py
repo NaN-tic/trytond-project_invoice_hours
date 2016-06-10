@@ -32,8 +32,8 @@ class Work:
 
     @staticmethod
     def _get_duration_to_invoice_hours(works):
-        return dict((w.id, w.effort_duration) for w in works
-            if w.state == 'done' and not w.invoice_line)
+        return dict((w.id, w.timesheet_duration or timedelta())
+            for w in works if w.state == 'done' and not w.invoice_line)
 
     @staticmethod
     def _get_invoiced_amount_hours(works):
@@ -62,9 +62,12 @@ class Work:
                 self.raise_user_error('missing_product', (self.rec_name,))
             elif self.list_price is None:
                 self.raise_user_error('missing_list_price', (self.rec_name,))
+
+            hours = self.timesheet_duration.total_seconds() / 60 / 60
+
             return [{
                     'product': self.product,
-                    'quantity': self.effort_hours,
+                    'quantity': hours,
                     'unit_price': self.list_price,
                     'origin': self,
                     'description': self.work.name,
