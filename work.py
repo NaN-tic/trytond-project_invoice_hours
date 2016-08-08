@@ -70,6 +70,6 @@ class Work:
                     'quantity': hours,
                     'unit_price': self.list_price,
                     'origin': self,
-                    'description': self.work.name,
+                    'description': self.name,
                     }]
         return []
