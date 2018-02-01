@@ -12,27 +12,19 @@ Imports::
     >>> from dateutil.relativedelta import relativedelta
     >>> from decimal import Decimal
     >>> from proteus import config, Model, Wizard
+    >>> from trytond.tests.tools import activate_modules, set_user
     >>> from trytond.modules.company.tests.tools import create_company, \
     ...     get_company
     >>> from trytond.modules.account.tests.tools import create_chart, \
     ...     get_accounts
-    >>> from.trytond.modules.account_invoice.tests.tools import \
+    >>> from trytond.modules.account_invoice.tests.tools import \
     ...     create_payment_term
     >>> today = datetime.date.today()
 
-Create database::
-
-    >>> config = config.set_trytond()
-    >>> config.pool.test = True
 
 Install project_invoice::
 
-    >>> Module = Model.get('ir.module')
-    >>> module, = Module.find([
-    ...         ('name', '=', 'project_invoice_hours'),
-    ...     ])
-    >>> Module.install([module.id], config.context)
-    >>> Wizard('ir.module.install_upgrade').execute('upgrade')
+    >>> config = activate_modules('project_invoice_hours')
 
 Create company::
 
@@ -112,28 +104,21 @@ Create product::
 
 Create a Project::
 
-    >>> config.user = project_user.id
+    >>> set_user(project_user)
     >>> ProjectWork = Model.get('project.work')
-    >>> TimesheetWork = Model.get('timesheet.work')
     >>> project = ProjectWork()
     >>> project.name = 'Test effort'
-    >>> work = TimesheetWork()
-    >>> work.name = 'Test effort'
-    >>> work.save()
-    >>> project.work = work
     >>> project.type = 'project'
     >>> project.party = customer
     >>> project.project_invoice_method = 'hours'
     >>> project.product = product
+    >>> project.timesheet_available = True
     >>> project.effort_duration = datetime.timedelta(hours=1)
     >>> task = ProjectWork()
     >>> task.name = 'Task 1'
-    >>> work = TimesheetWork()
-    >>> work.name = 'Task 1'
-    >>> work.save()
-    >>> task.work = work
     >>> task.type = 'task'
     >>> task.product = product
+    >>> task.timesheet_available = True
     >>> task.effort_duration = datetime.timedelta(hours=3)
     >>> project.children.append(task)
     >>> project.save()
@@ -145,12 +130,12 @@ Create timesheets::
     >>> line = TimesheetLine()
     >>> line.employee = employee
     >>> line.duration = datetime.timedelta(hours=3)
-    >>> line.work = task.work
+    >>> line.work, = task.timesheet_works
     >>> line.save()
     >>> line = TimesheetLine()
     >>> line.employee = employee
     >>> line.duration = datetime.timedelta(hours=2)
-    >>> line.work = project.work
+    >>> line.work, = project.timesheet_works
     >>> line.save()
 
 Check project hours::

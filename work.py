@@ -56,6 +56,12 @@ class Work:
         return amounts
 
     def _get_lines_to_invoice_hours(self):
+        pool = Pool()
+        ModelData = pool.get('ir.model.data')
+        Uom = pool.get('product.uom')
+
+        hour = Uom(ModelData.get_id('product', 'uom_hour'))
+
         if (not self.invoice_line and self.timesheet_duration
                 and self.state == 'done'):
             if not self.product:
@@ -68,6 +74,7 @@ class Work:
             return [{
                     'product': self.product,
                     'quantity': hours,
+                    'unit': hour,
                     'unit_price': self.list_price,
                     'origin': self,
                     'description': self.name,
