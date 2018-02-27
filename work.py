@@ -1,9 +1,11 @@
-#This file is part of Tryton.  The COPYRIGHT file at the top level of
-#this repository contains the full copyright notices and license terms.
+# This file is part of Tryton.  The COPYRIGHT file at the top level of
+# this repository contains the full copyright notices and license terms.
 from datetime import timedelta
 from decimal import Decimal
 from trytond.pool import Pool, PoolMeta
 from trytond.transaction import Transaction
+from collections import defaultdict
+import datetime
 
 __all__ = ['Work']
 
@@ -30,10 +32,11 @@ class Work:
         return dict((w.id, timedelta(hours=w.invoice_line.quantity or 0.0))
             for w in works if w.invoice_line)
 
-    @staticmethod
-    def _get_duration_to_invoice_hours(works):
-        return dict((w.id, w.timesheet_duration or timedelta())
-            for w in works if w.state == 'done' and not w.invoice_line)
+    @classmethod
+    def _get_duration_to_invoice_hours(cls, works):
+        durations = defaultdict(datetime.timedelta)
+        w = [x for x in works if x.state == 'done']
+        return cls._get_duration_timesheet(w, True)
 
     @staticmethod
     def _get_invoiced_amount_hours(works):
