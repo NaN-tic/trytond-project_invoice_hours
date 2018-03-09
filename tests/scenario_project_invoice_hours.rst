@@ -146,7 +146,7 @@ Check project hours::
     >>> project.duration_to_invoice
     datetime.timedelta(0)
     >>> project.invoiced_amount
-    Decimal('0')
+    Decimal('0.00')
 
 Do 1 task::
 
@@ -161,7 +161,7 @@ Check project hours::
     >>> project.duration_to_invoice
     datetime.timedelta(0, 10800)
     >>> project.invoiced_amount
-    Decimal('0')
+    Decimal('0.00')
 
 Invoice project::
 
