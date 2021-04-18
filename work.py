@@ -1,8 +1,7 @@
 # This file is part of Tryton.  The COPYRIGHT file at the top level of
 # this repository contains the full copyright notices and license terms.
-from trytond.pool import PoolMeta
-
-__all__ = ['Work']
+from decimal import Decimal
+from trytond.pool import Pool, PoolMeta
 
 
 class Work(metaclass=PoolMeta):
@@ -18,20 +17,40 @@ class Work(metaclass=PoolMeta):
             cls.project_invoice_method.selection.append(item)
 
     @classmethod
-    def _get_invoiced_duration_hours(cls, works):
-        return cls._get_duration_timesheet(works, True)
-
-    @classmethod
-    def _get_duration_to_invoice_hours(cls, works):
-        w = [x for x in works if x.state == 'done']
-        return cls._get_duration_timesheet(w, False)
+    def _get_quantity_to_invoice_hours(cls, works):
+        quantities = cls._get_quantity_to_invoice_timesheet(works)
+        for work_id, hours in quantities.items():
+            work = cls(work_id)
+            if work.status.progress != 1 or work.invoice_line:
+                quantities[work_id] = 0.0
+        return quantities
 
     @classmethod
     def _get_invoiced_amount_hours(cls, works):
-        return cls._get_invoiced_amount_timesheet(works)
+        pool = Pool()
+        InvoiceLine = pool.get('account.invoice.line')
+        Currency = pool.get('currency.currency')
 
-    def _get_lines_to_invoice_hours(self):
-        if self.state == 'done':
-            return self._get_lines_to_invoice_timesheet()
-        else:
-            return []
+        invoice_lines = InvoiceLine.browse([
+                w.invoice_line.id for w in works
+                if w.invoice_line])
+
+        id2invoice_lines = dict((l.id, l) for l in invoice_lines)
+        amounts = {}
+        for work in works:
+            currency = work.company.currency
+            if work.invoice_line:
+                invoice_line = id2invoice_lines[work.invoice_line.id]
+                invoice_currency = (invoice_line.invoice.currency
+                    if invoice_line.invoice else invoice_line.currency)
+                amounts[work.id] = Currency.compute(invoice_currency,
+                    invoice_line.amount, currency)
+            else:
+                amounts[work.id] = Decimal(0)
+        return amounts
+
+    def get_origins_to_invoice(self):
+        origins = super().get_origins_to_invoice()
+        if self.invoice_method == 'hours':
+            origins.append(self)
+        return origins

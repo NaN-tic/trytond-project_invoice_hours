@@ -31,6 +31,12 @@ Create company::
     >>> _ = create_company()
     >>> company = get_company()
 
+Get status::
+
+    >>> WorkStatus = Model.get('project.work.status')
+    >>> open, = WorkStatus.find([('name', '=', "Open")])
+    >>> done, = WorkStatus.find([('name', '=', "Done")])
+
 Create project user::
 
     >>> User = Model.get('res.user')
@@ -96,7 +102,6 @@ Create product::
     >>> hour, = ProductUom.find([('name', '=', 'Hour')])
     >>> Product = Model.get('product.product')
     >>> ProductTemplate = Model.get('product.template')
-    >>> product = Product()
     >>> template = ProductTemplate()
     >>> template.name = 'Service'
     >>> template.default_uom = hour
@@ -104,7 +109,7 @@ Create product::
     >>> template.list_price = Decimal('20')
     >>> template.account_category = account_category
     >>> template.save()
-    >>> product.template = template
+    >>> product, = template.products
     >>> product.save()
 
 Create a Project::
@@ -122,6 +127,7 @@ Create a Project::
     >>> task = ProjectWork()
     >>> task.name = 'Task 1'
     >>> task.type = 'task'
+    >>> task.party = customer
     >>> task.product = product
     >>> task.timesheet_available = True
     >>> task.effort_duration = datetime.timedelta(hours=3)
@@ -146,35 +152,30 @@ Create timesheets::
 Check project hours::
 
     >>> project.reload()
-    >>> project.invoiced_duration
-    datetime.timedelta(0)
-    >>> project.duration_to_invoice
-    datetime.timedelta(0)
-    >>> project.invoiced_amount
+    >>> project.quantity_to_invoice
+    0.0
+    >>> project.amount_to_invoice
     Decimal('0.00')
+    >>> project.invoiced_amount
+    Decimal('0')
 
 Do 1 task::
 
-    >>> task.state = 'done'
+    >>> task.status = done
     >>> task.save()
 
 Check project hours::
 
-    >>> project.reload()
-    >>> project.invoiced_duration
-    datetime.timedelta(0)
-    >>> project.duration_to_invoice == datetime.timedelta(seconds=10800)
-    True
-    >>> project.invoiced_amount
-    Decimal('0.00')
+    >>> task.quantity_to_invoice
+    3.0
+    >>> task.invoiced_amount
+    Decimal('0')
 
 Invoice project::
 
-    >>> config.user = project_invoice_user.id
+    >>> set_user(project_invoice_user)
     >>> project.click('invoice')
-    >>> project.invoiced_duration == datetime.timedelta(seconds=10800)
-    True
-    >>> project.duration_to_invoice
-    datetime.timedelta(0)
+    >>> project.quantity_to_invoice
+    0.0
     >>> project.invoiced_amount
     Decimal('60.00')
