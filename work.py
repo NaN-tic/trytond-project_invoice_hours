@@ -21,7 +21,7 @@ class Work(metaclass=PoolMeta):
         quantities = cls._get_quantity_to_invoice_timesheet(works)
         for work_id, hours in quantities.items():
             work = cls(work_id)
-            if work.status.progress != 1 or work.invoice_line:
+            if (work.status and work.status.progress != 1) or work.invoice_line:
                 quantities[work_id] = 0.0
         return quantities
 
