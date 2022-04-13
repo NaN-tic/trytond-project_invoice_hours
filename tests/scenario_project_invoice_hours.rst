@@ -153,9 +153,9 @@ Check project hours::
 
     >>> project.reload()
     >>> project.quantity_to_invoice
-    0.0
+    2.0
     >>> project.amount_to_invoice
-    Decimal('0.00')
+    Decimal('100.00')
     >>> project.invoiced_amount
     Decimal('0')
 
@@ -178,4 +178,4 @@ Invoice project::
     >>> project.quantity_to_invoice
     0.0
     >>> project.invoiced_amount
-    Decimal('60.00')
+    Decimal('100.00')
